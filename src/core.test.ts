@@ -1,0 +1,26 @@
+import {describe,it,expect} from 'vitest';
+import {kind,makeDeck,RNG,shanten,waits,score,deal,drawWeighted} from './core';
+const hand=(ks:number[])=>{const c=Array(27).fill(0);return ks.map(k=>4*k+c[k]++);};
+describe('sanma core',()=>{
+ it('has 108 unique physical tiles',()=>{expect(new Set(makeDeck()).size).toBe(108);expect(kind(107)).toBe(26);});
+ it('replays RNG',()=>{const a=new RNG('a'),b=new RNG('a');for(let i=0;i<100;i++)expect(a.int(108)).toBe(b.int(108));});
+ it('recognizes kokushi and thirteen sided wait',()=>{const ks=[0,1,2,10,11,19,20,21,22,23,24,25,26],h=hand(ks);expect(shanten(h)).toBe(0);expect(waits(h)).toEqual(ks);const full=hand([...ks,0]);expect(score(full,{winTile:full[13],tsumo:true})?.yakuman).toBe(1);});
+ it('seven pairs is 25 fu',()=>{const h=hand([0,0,1,1,3,3,7,7,12,12,20,20,25,25]);expect(shanten(h)).toBe(-1);expect(score(h,{winTile:h[13],tsumo:false})?.fu).toBe(25);});
+ it('quad is not two pairs',()=>expect(shanten(hand([0,0,0,0,1,1,3,3,7,7,12,12,20]))).toBeGreaterThan(0));
+ it('pinfu ron 30 and tsumo 20 fu',()=>{const h=hand([2,3,4,5,6,7,12,13,14,15,16,17,22,22]);const win=h[0];expect(score(h,{winTile:win,tsumo:false})?.fu).toBe(30);expect(score(h,{winTile:win,tsumo:true})?.fu).toBe(20);});
+ it('edge wait is not pinfu',()=>{const h=hand([2,3,4,5,6,7,12,13,14,15,16,17,22,22]);expect(score(h,{winTile:h[2],tsumo:false,riichi:true})?.yaku).not.toContain('平和');expect(score(h,{winTile:h[2],tsumo:false,riichi:true})?.fu).toBe(40);});
+ it('bonuses cannot create yaku',()=>{const h=hand([2,3,4,5,6,7,12,13,14,15,16,17,22,22]);expect(score(h,{winTile:h[2],tsumo:false,nuki:4,doraIndicators:[0]})).toBeNull();});
+ it('stacks yakuman but big four winds is one',()=>{const h=hand([20,20,20,21,21,21,22,22,22,23,23,23,24,24]);const s=score(h,{winTile:h[13],tsumo:false});expect(s?.yakuman).toBe(3);expect(s?.base).toBe(24000);});
+ it('ron triplet is not concealed for sanankou',()=>{const h=hand([3,3,3,12,12,12,25,25,25,5,6,7,22,22]);expect(score(h,{winTile:h[0],tsumo:false})?.yaku).not.toContain('三暗刻');expect(score(h,{winTile:h[13],tsumo:false})?.yaku).toContain('三暗刻');});
+ it('north is not yakuhai',()=>{const h=hand([23,23,23,2,3,4,14,15,16,6,7,8,21,21]);expect(score(h,{winTile:h[5],tsumo:false,seatWind:23,roundWind:23})).toBeNull();});
+ it('rinshan excludes haitei',()=>{const h=hand([2,3,4,5,6,7,12,13,14,15,16,17,22,22]);const s=score(h,{winTile:h[0],tsumo:true,rinshan:true,lastTile:true});expect(s?.yaku).toContain('岭上开花');expect(s?.yaku).not.toContain('海底摸月');});
+ it('neutral deal preserves shuffle and dead wall',()=>{const a=deal('seed',[50,50,50]),b=deal('seed',[50,50,50]);expect(a.hands).toEqual(b.hands);expect(a.wall.length).toBe(55);expect(a.dead.length).toBe(14);expect(new Set([...a.hands.flat(),...a.wall,...a.dead]).size).toBe(108);});
+ it('neutral draw consumes no randomness',()=>{const a=new RNG('a'),b=new RNG('a'),wall=[5,7,9];expect(drawWeighted([],wall,50,a)).toBe(5);expect(a.next()).toBe(b.next());expect(wall).toEqual([7,9]);});
+ it('exchange conserves tiles, dead wall and improves direction',()=>{const a=deal('luck-test',[50,50,50]),b=deal('luck-test',[100,0,50]);expect(b.dead).toEqual(a.dead);expect(b.hands[2]).toEqual(a.hands[2]);expect(shanten(b.hands[0])).toBeLessThanOrEqual(shanten(a.hands[0]));expect(shanten(b.hands[1])).toBeGreaterThanOrEqual(shanten(a.hands[1]));expect(new Set([...b.hands.flat(),...b.wall,...b.dead]).size).toBe(108);},60000);
+ it('one/nine man dora cycle and nuki dora',()=>{const h=hand([0,0,1,1,3,3,7,7,12,12,20,20,25,25]);const s=score(h,{winTile:h[13],tsumo:false,nuki:2,doraIndicators:[0,88]});expect(s?.han).toBe(8);});
+ it('double east pair adds four fu',()=>{const h=hand([2,3,4,5,6,7,12,13,14,15,16,17,20,20]);expect(score(h,{winTile:h[0],tsumo:false,riichi:true})?.fu).toBe(40);});
+ it('open yakuhai triplet and closed kan fu',()=>{const h=hand([2,3,4,5,6,7,12,13,14,22,22]);const s=score(h,{winTile:h[0],tsumo:false,melds:[{tiles:hand([24,24,24]),open:true}]});expect(s?.fu).toBe(30);expect(s?.yaku).toContain('白');const k=score(h,{winTile:h[0],tsumo:false,melds:[{tiles:hand([24,24,24,24]),open:false,kan:true}]});expect(k?.fu).toBe(70);});
+ it('same suit nine gates is one yakuman',()=>{const h=hand([2,2,2,3,4,5,6,7,8,9,10,10,10,6]);expect(score(h,{winTile:h[13],tsumo:true})?.yakuman).toBe(1);});
+ it('best interpretation prefers ryanpeikou over seven pairs',()=>{const h=hand([3,3,4,4,5,5,12,12,13,13,14,14,17,17]);const s=score(h,{winTile:h[0],tsumo:false});expect(s?.yaku).toContain('二杯口');expect(s?.yaku).not.toContain('七对子');});
+ it('weighted draws conserve all physical tiles',()=>{const a=deal('weighted',[50,50,50]);const before=a.wall.slice(),t=drawWeighted(a.hands[0],a.wall,100,a.rng);expect([t,...a.wall].sort((a,b)=>a-b)).toEqual(before.sort((a,b)=>a-b));});
+});

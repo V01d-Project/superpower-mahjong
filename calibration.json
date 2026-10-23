@@ -1,0 +1,46 @@
+{
+  "status": "exploratory-not-certified",
+  "algorithm": "design-3.2-budget38-Kminus1",
+  "rows": [
+    {
+      "luck": 50,
+      "n": 200,
+      "histogram": {
+        "1": 2,
+        "2": 33,
+        "3": 76,
+        "4": 77,
+        "5": 11,
+        "6": 1
+      },
+      "mean": 3.325,
+      "atMostOne": 0.01,
+      "milliseconds": 10
+    },
+    {
+      "luck": 100,
+      "n": 50,
+      "histogram": {
+        "0": 45,
+        "1": 4,
+        "2": 1
+      },
+      "mean": 0.12,
+      "atMostOne": 0.98,
+      "milliseconds": 8785
+    },
+    {
+      "luck": 0,
+      "n": 50,
+      "histogram": {
+        "2": 4,
+        "3": 17,
+        "4": 20,
+        "5": 9
+      },
+      "mean": 3.68,
+      "atMostOne": 0,
+      "milliseconds": 21
+    }
+  ]
+}

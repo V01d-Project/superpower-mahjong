@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.deploy/
+*.log
+*.tsbuildinfo
+desktop.png
+mobile.png
