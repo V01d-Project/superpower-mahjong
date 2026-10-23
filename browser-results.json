@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "result": "ROUND RESULT\n荒牌流局\n\n你 未听\n\n青岚 听牌\n\n白露 听牌\n\n你\n-3000\n青岚\n+1500\n白露\n+1500\n下一局 →",
+  "winResult": "ROUND RESULT\n你 自摸\n\n你：门前清自摸 1番 40符\n\n你\n+1400\n青岚\n-700\n白露\n-700\n下一局 →",
+  "winSeed": "acceptance-win-9",
+  "winLuck": 100,
+  "steps": 169,
+  "mobileOverflow": false,
+  "pageErrors": []
+}

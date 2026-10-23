@@ -1,46 +1,66 @@
 {
   "status": "exploratory-not-certified",
   "algorithm": "design-3.2-budget38-Kminus1",
+  "seedPrefix": "independent-validation-v2-",
+  "notes": "No budget change applied. 100 luck target failure must be disclosed.",
   "rows": [
     {
       "luck": 50,
-      "n": 200,
+      "n": 20000,
       "histogram": {
-        "1": 2,
-        "2": 33,
-        "3": 76,
-        "4": 77,
-        "5": 11,
-        "6": 1
+        "0": 4,
+        "1": 237,
+        "2": 2678,
+        "3": 7964,
+        "4": 7307,
+        "5": 1764,
+        "6": 46
       },
-      "mean": 3.325,
-      "atMostOne": 0.01,
-      "milliseconds": 10
-    },
-    {
-      "luck": 100,
-      "n": 50,
-      "histogram": {
-        "0": 45,
-        "1": 4,
-        "2": 1
-      },
-      "mean": 0.12,
-      "atMostOne": 0.98,
-      "milliseconds": 8785
+      "mean": 3.39045,
+      "standardError": 0.006202972168096991,
+      "atMostOne": 0.01205,
+      "wilson95": [
+        0.010628776597464848,
+        0.01365863827588628
+      ],
+      "milliseconds": 365
     },
     {
       "luck": 0,
-      "n": 50,
+      "n": 2000,
       "histogram": {
-        "2": 4,
-        "3": 17,
-        "4": 20,
-        "5": 9
+        "1": 2,
+        "2": 106,
+        "3": 538,
+        "4": 914,
+        "5": 422,
+        "6": 18
       },
-      "mean": 3.68,
-      "atMostOne": 0,
-      "milliseconds": 21
+      "mean": 3.851,
+      "standardError": 0.01890974058903434,
+      "atMostOne": 0.001,
+      "wilson95": [
+        0.000274273176083379,
+        0.0036390101892285302
+      ],
+      "milliseconds": 91463
+    },
+    {
+      "luck": 100,
+      "n": 1000,
+      "histogram": {
+        "0": 931,
+        "1": 65,
+        "2": 4
+      },
+      "mean": 0.073,
+      "standardError": 0.008703260696241768,
+      "atMostOne": 0.996,
+      "wilson95": [
+        0.9897602795701941,
+        0.9984434370321067
+      ],
+      "milliseconds": 351456
     }
   ]
 }

@@ -1,0 +1,31 @@
+import {describe,it,expect} from 'vitest';
+import {score,kind,deal,RNG,drawWeighted,makeDeck,shanten} from './core';
+import {createGame,act,aiStep,legal} from './engine';
+import type {Game} from './engine';
+const tiles=(ks:number[])=>{const c=Array(27).fill(0);return ks.map(k=>4*k+c[k]++)};
+const owned=(g:Game)=>[...g.wall,...g.dead,...g.players.flatMap(p=>[...p.hand,...p.river,...p.nuki,...p.melds.flatMap(m=>m.tiles)])];
+const pinfu=()=>tiles([2,3,4,5,6,7,12,13,14,15,16,17,22,22]).map(t=>t===24||t===60?t+1:t);
+describe('scoring and luck boundaries',()=>{
+ it.each([-1,101,NaN,12.5])('rejects invalid initial luck %s',luck=>expect(()=>deal('bad',[luck,50,50])).toThrow());
+ it('riichi, ippatsu and menzen tsumo have distinct yaku',()=>{const h=pinfu(),s=score(h,{winTile:h[0],tsumo:true,riichi:true,ippatsu:true})!;expect(s.yaku).toEqual(expect.arrayContaining(['立直','一发','门前清自摸','平和']));expect(s.han).toBe(4)});
+ it('ippatsu without riichi is not a yaku',()=>{const h=pinfu();expect(score(h,{winTile:h[0],tsumo:false,ippatsu:true})!.yaku).not.toContain('一发')});
+ it('awards tanyao and iipeikou',()=>{const h=tiles([3,4,5,3,4,5,12,13,14,15,16,17,18,18]);expect(score(h,{winTile:h[0],tsumo:false})!.yaku).toEqual(expect.arrayContaining(['断幺九','一杯口']))});
+ it('honitsu and ittsu count together',()=>{const h=tiles([2,3,4,5,6,7,8,9,10,24,24,24,21,21]);const s=score(h,{winTile:h[0],tsumo:false})!;expect(s.yaku).toEqual(expect.arrayContaining(['混一色','一气通贯','白']));expect(s.han).toBe(7)});
+ it('closed chinitsu has six han',()=>{const h=tiles([2,3,4,4,5,6,6,7,8,8,9,10,5,5]);expect(score(h,{winTile:h[0],tsumo:false})!.yaku).toContain('清一色')});
+ it.each([[0,240],[1,480],[2,960],[3,1920],[4,2000],[5,3000],[7,4000],[10,6000],[12,8000],[16,8000]])('one han 30 fu plus %i bonus has base %i',(bonus,base)=>{const h=pinfu();expect(score(h,{winTile:h[0],tsumo:false,nuki:bonus})!.base).toBe(base)});
+ it('suanko tanki is single yakuman',()=>{const h=tiles([3,3,3,12,12,12,24,24,24,25,25,25,21,21]);const s=score(h,{winTile:h[13],tsumo:false})!;expect(s.yakuman).toBe(1);expect(s.yaku).toContain('四暗刻')});
+ it('rejects duplicate physical tile identifiers',()=>{const h=pinfu();h[13]=h[12];expect(score(h,{winTile:h[0],tsumo:true})).toBeNull()});
+ it('luck 100 weak draw can miss a winning tile',()=>{const h=pinfu().slice(1),winning=8,miss=104;expect(shanten([...h,winning])).toBe(-1);let hits=0;for(let i=0;i<1000;i++){const wall=[winning,miss];if(kind(drawWeighted(h,wall,100,new RNG('weak-'+i)))===kind(winning))hits++}expect(hits).toBeGreaterThan(480);expect(hits).toBeLessThan(680)});
+});
+describe('engine transactional boundaries',()=>{
+ it('eight replacements retain indicators and all physical tiles',()=>{const g=createGame('eight');const initial=tiles([0,0,0,0,1,1,1,1,24,24,24,24,23,23]),queue=[94,95,100,101],tail=[102,103,104,105];const reserved=new Set([...initial,...queue,...tail]);const pool=makeDeck().filter(t=>!reserved.has(t));g.players[0].hand=initial;g.players[1].hand=pool.splice(0,13);g.players[2].hand=pool.splice(0,13);g.players[1].permanentFuriten=true;g.players[2].permanentFuriten=true;const indicators=pool.splice(0,10);g.dead=[...indicators,...queue];g.wall=[...pool,...tail.slice().reverse()];const n=g.wall.length;for(const type of ['kan','nuki','nuki','nuki','nuki','kan','kan','kan'] as const){expect(legal(g)[type]).toBe(true);act(g,{type});if(type==='nuki')aiStep(g);expect(g.dead).toHaveLength(14);expect(g.dead.slice(0,10)).toEqual(indicators);expect(new Set(owned(g)).size).toBe(108);expect(owned(g)).toHaveLength(108)}expect(g.wall).toHaveLength(n-8);expect(g.kans).toBe(4);expect(g.players[0].nuki).toHaveLength(4);expect(legal(g).kan).toBe(false)});
+ it('A07 cannot use nuki or kan to bypass mandatory discard',()=>{const g=createGame('mandatory','A07');g.players[0].discards=3;act(g,{type:'ability',tile:g.players[0].hand[0],suit:'p'});expect(g.source).toBe('ability');expect(legal(g).tsumo).toBe(false);expect(legal(g).nuki).toBe(false);expect(legal(g).kan).toBe(false)});
+ it('A07 no-candidate refunds cost but consumes active opportunity',()=>{const g=createGame('refund','A07');g.players[0].discards=3;g.wall=g.wall.filter(t=>kind(t)<2||kind(t)>10);act(g,{type:'ability',tile:g.players[0].hand[0],suit:'p'});expect(g.players[0].luck).toBe(50);expect(g.players[0].used).toBe(true)});
+ it('shield with insufficient luck preserves opportunity',()=>{const g=createGame('lowshield','A06');g.players[1].luck=3;act(g,{type:'ability',target:1});expect(g.players[1].sealed).toBe(3);expect(g.players[1].shield).toBe(true)});
+ it('information-only ability preserves all existing ippatsu',()=>{const g=createGame('information');g.players[1].ippatsu=true;act(g,{type:'ability'});expect(g.players[1].ippatsu).toBe(true)});
+ it('hand manipulation cancels all existing ippatsu',()=>{const g=createGame('interference','A07');g.players[0].discards=3;g.players[1].ippatsu=true;act(g,{type:'ability',tile:g.players[0].hand[0],suit:'s'});expect(g.players[1].ippatsu).toBe(false)});
+ it('seal expires on discard even following replacement',()=>{const g=createGame('sealed-replacement');g.players[0].sealed=2;g.players[0].sealDrawn=true;g.source='replacement';act(g,{type:'discard',tile:g.drawn!});expect(g.players[0].sealed).toBe(0)});
+ it('cannot use active in replacement or riichi windows',()=>{const g=createGame('windows');g.source='replacement';expect(legal(g).ability).toBe(false);g.source='normal';g.players[0].riichi=true;expect(legal(g).ability).toBe(false)});
+ it('end settlement is not applied twice',()=>{const g=createGame('settle');const h=pinfu();g.players[0].hand=h;g.drawn=h[0];act(g,{type:'tsumo'});const points=g.players.map(p=>p.points);act(g,{type:'tsumo'});expect(g.players.map(p=>p.points)).toEqual(points)});
+ it('next hand preserves points and resets active, shield and private peek',()=>{const g=createGame('next');g.players[0].hand=pinfu();g.drawn=g.players[0].hand[0];g.peek=[0];act(g,{type:'tsumo'});const points=g.players.map(p=>p.points);act(g,{type:'next'});expect(g.players.map(p=>p.points)).toEqual(points);expect(g.players.every(p=>p.shield&&!p.used)).toBe(true);expect(g.peek).toBeUndefined();expect(g.handNo).toBe(2)});
+});
