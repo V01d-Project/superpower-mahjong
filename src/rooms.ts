@@ -34,7 +34,7 @@ export class Rooms {
  // Keep the revision stable while simultaneous responses are collected.
  this.advance(r);return;
  }
- if(a.type==='next'){if(g.phase!=='end'||s!==0)throw Error('Only host can start next hand');}
+ if(a.type==='next'){if(g.phase!=='end'||g.matchEnded||s!==0)throw Error('Only host can start next hand');}
  else {if(g.phase!=='self'||g.turn!==s)throw Error('Not your turn');if(a.type==='discard'){if(!Number.isInteger(a.tile)||!g.players[s].hand.includes(a.tile)||g.players[s].riichi&&a.tile!==g.drawn||kind(a.tile)===g.noDiscardKind||a.riichi&&!l.riichiTiles.includes(a.tile))throw Error('Illegal discard')}
  else if(!['ability','tsumo','nuki','kan'].includes(a.type)||!l[a.type as 'ability'|'tsumo'|'nuki'|'kan'])throw Error('Illegal action');
  if(a.type==='ability'&&a.suit!==undefined&&!['p','s'].includes(a.suit))throw Error('Invalid suit');}
@@ -53,7 +53,7 @@ export class Rooms {
  const g=r.game;if(!g||g.phase==='end')continue;let changed=false;
  for(let s=0;s<3;s++){const x=r.seats[s];if(x.peer||x.disconnectedAt===undefined||this.now()-x.disconnectedAt<this.grace)continue;
  if(r.game!.phase==='response'&&r.game!.lastDiscard?.seat!==s&&!r.choices[s]){const l=legal(r.game!,s);r.choices[s]=l.ron?'ron':'pass';changed=true;this.advance(r)}
- else if(r.game!.phase==='self'&&r.game!.turn===s){const q=r.game!,l=legal(q,s),p=q.players[s];const a:Action=l.tsumo?{type:'tsumo'}:{type:'discard',tile:p.hand.find(t=>(!p.riichi||t===q.drawn)&&kind(t)!==q.noDiscardKind)!};this.action(r,s,a);changed=true}
+ else if(r.game!.phase==='self'&&r.game!.turn===s){const q=r.game!,l=legal(q,s),p=q.players[s];const a:Action=l.tsumo?{type:'tsumo'}:l.kan?{type:'kan'}:{type:'discard',tile:p.hand.find(t=>(!p.riichi||t===q.drawn)&&kind(t)!==q.noDiscardKind)!};this.action(r,s,a);changed=true}
  }if(changed)this.broadcast(r);
  }}
 }
