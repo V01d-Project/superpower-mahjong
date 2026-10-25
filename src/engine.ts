@@ -1,34 +1,41 @@
-import { kind, tileName, deal, drawWeighted, score, shanten, waits, RNG } from './core';
+import { kind, tileName, deal, drawWeighted, score, shanten, waits, waitShapes, RNG } from './core';
 import type { Tile, Meld, ScoreResult } from './core';
 /** Local single-player engine, not a multiplayer authority. act mutates input and returns a shallow copy.
- * Conservative limitation: post-riichi kans disabled; no pao, abortive draws,
- * double riichi or nagashi mangan. Fixed East 1..4 match with dealer repeats.
+ * Conservative limitation: post-riichi kans require unchanged winning shapes; no pao, abortive draws,
+ * nagashi mangan. Fixed East 1..4 match with dealer repeats.
  * Dead-wall slots 0..9 are indicators, 10..13 a replenishing replacement queue (not verified Tenhou mapping).
  */
 export type Ability = 'A01'|'A02'|'A03'|'A06'|'A07'|'A10';
-export interface Player { name:string; hand:Tile[]; melds:Meld[]; river:Tile[]; nuki:Tile[]; points:number; luck:number; riichi:boolean; ippatsu:boolean; shield:boolean; sealed:number; sealDrawn?:boolean; used:boolean; gain:number; furiten:boolean; permanentFuriten:boolean; history:Tile[]; discards:number; active:Ability }
+export interface Player { name:string; hand:Tile[]; melds:Meld[]; river:Tile[]; nuki:Tile[]; points:number; luck:number; riichi:boolean; doubleRiichi?:boolean; ippatsu:boolean; shield:boolean; sealed:number; sealDrawn?:boolean; used:boolean; gain:number; furiten:boolean; permanentFuriten:boolean; history:Tile[]; discards:number; active:Ability }
 export type Action = {type:'discard';tile:Tile;riichi?:boolean}|{type:'tsumo'|'ron'|'pass'|'nuki'|'pon'|'kan'|'next'}|{type:'ability';target?:number;tile?:Tile;suit?:'p'|'s'};
 export interface Legal {tsumo:boolean;ron:boolean;pon:boolean;kan:boolean;nuki:boolean;riichiTiles:Tile[];ability:boolean}
-export interface Game {players:Player[];wall:Tile[];dead:Tile[];turn:number;phase:'self'|'response'|'end';lastDiscard?:{tile:Tile;seat:number};drawn?:Tile;log:string[];result?:{title:string;details:string[];deltas:number[]};peek?:Tile[];seed:string;handNo:number;active:Ability;rng:RNG;abilityRng:RNG;pot:number;dealer:number;honba:number;kans:number;source:'normal'|'replacement'|'call'|'ability';matchEnded?:boolean; repeatDealer?:boolean; rankings?:{seat:number;name:string;points:number}[]; pending?:'nuki'|'kakan';pendingRiichi?:number;responseReady:boolean;noDiscardKind?:number}
+export interface Game {players:Player[];wall:Tile[];dead:Tile[];turn:number;phase:'self'|'response'|'end';lastDiscard?:{tile:Tile;seat:number};drawn?:Tile;log:string[];result?:{title:string;details:string[];deltas:number[]};peek?:Tile[];seed:string;handNo:number;active:Ability;rng:RNG;abilityRng:RNG;pot:number;dealer:number;honba:number;kans:number;source:'normal'|'replacement'|'call'|'ability';matchEnded?:boolean; repeatDealer?:boolean; rankings?:{seat:number;name:string;points:number}[]; pending?:'nuki'|'kakan';pendingRiichi?:number;responseReady:boolean;noDiscardKind?:number; interrupted?:boolean}
 const clamp=(n:number)=>Math.max(0,Math.min(100,n));
 const sorted=(a:Tile[])=>a.sort((a,b)=>a-b);
 function say(g:Game,s:string){g.log=[...g.log.slice(-79),s]}
-function interrupt(g:Game){g.players.forEach(p=>p.ippatsu=false)}
+function interrupt(g:Game){g.interrupted=true;g.players.forEach(p=>p.ippatsu=false)}
 export function createGame(seed:string,active:Ability='A02',lucks:number[]=[50,50,50],dealer=0):Game {
  const d=deal(seed,lucks); const g:Game={players:d.hands.map((hand,i)=>({name:['你','青岚','白露'][i],hand:sorted(hand),melds:[],river:[],nuki:[],points:35000,luck:clamp(lucks[i]??50),riichi:false,ippatsu:false,shield:true,sealed:0,used:false,gain:0,furiten:false,permanentFuriten:false,history:[],discards:0,active:i===0?active:i===1?'A01':'A06'})),wall:d.wall,dead:d.dead,rng:d.rng,abilityRng:new RNG(seed+'/ability'),turn:0,phase:'self',seed,active,handNo:1,pot:0,dealer,honba:0,kans:0,source:'normal',responseReady:false,log:['单机三麻 · 你与两位 AI · 每人自带一次护运','本局配牌运气：'+lucks.join(' / ')]};draw(g,dealer);return g;
 }
 function evaluate(g:Game,s:number,tsumo:boolean):ScoreResult|null {
  const p=g.players[s],t=tsumo?g.drawn:g.lastDiscard?.tile;if(t===undefined)return null;
  if(tsumo&&(g.source==='ability'||g.source==='call'))return null;
- return score(tsumo?p.hand:[...p.hand,t],{melds:p.melds,winTile:t,tsumo,riichi:p.riichi,ippatsu:p.ippatsu,seatWind:20+(s-g.dealer+3)%3,roundWind:20,chankan:!tsumo&&g.pending==='kakan',rinshan:tsumo&&g.source==='replacement',lastTile:!g.wall.length&&!g.pending&&g.source!=='replacement',nuki:p.nuki.length,doraIndicators:g.dead.slice(0,2*(g.kans+1)).filter((_,i)=>i%2===0),uraIndicators:p.riichi?g.dead.slice(0,2*(g.kans+1)).filter((_,i)=>i%2===1):[]});
+ return score(tsumo?p.hand:[...p.hand,t],{melds:p.melds,winTile:t,tsumo,riichi:p.riichi,doubleRiichi:p.doubleRiichi,ippatsu:p.ippatsu,seatWind:20+(s-g.dealer+3)%3,roundWind:20,chankan:!tsumo&&g.pending==='kakan',rinshan:tsumo&&g.source==='replacement',lastTile:!g.wall.length&&!g.pending&&g.source!=='replacement',nuki:p.nuki.length,doraIndicators:g.dead.slice(0,2*(g.kans+1)).filter((_,i)=>i%2===0),uraIndicators:p.riichi?g.dead.slice(0,2*(g.kans+1)).filter((_,i)=>i%2===1):[]});
 }
 function canRon(g:Game,s:number){const p=g.players[s];return !!g.lastDiscard&&g.lastDiscard.seat!==s&&!p.furiten&&!p.permanentFuriten&&!waits(p.hand,p.melds).some(k=>p.history.some(t=>kind(t)===k))&&!!evaluate(g,s,false)}
 function addedTile(p:Player){return p.hand.find(t=>p.melds.some(m=>m.open&&!m.kan&&kind(m.tiles[0])===kind(t)))}
-function kanTiles(p:Player){const t=p.hand.find(t=>p.hand.filter(x=>kind(x)===kind(t)).length===4);return t===undefined?[]:p.hand.filter(x=>kind(x)===kind(t))}
+function kanTiles(p:Player,drawn?:Tile){const t=p.hand.find(t=>(!p.riichi||drawn!==undefined&&kind(t)===kind(drawn))&&p.hand.filter(x=>kind(x)===kind(t)).length===4);return t===undefined?[]:p.hand.filter(x=>kind(x)===kind(t))}
+export function riichiKanReason(g:Game,seat=0):string|undefined {
+ const p=g.players[seat];if(!p.riichi)return;
+ const tiles=kanTiles(p,g.drawn);if(tiles.length!==4||g.drawn===undefined||!tiles.includes(g.drawn))return '立直后暗杠必须使用刚摸入的第四张';
+ const before=p.hand.filter(t=>t!==g.drawn),after=p.hand.filter(t=>!tiles.includes(t));
+ const a=waitShapes(before,p.melds),b=waitShapes(after,[...p.melds,{tiles,open:false,kan:true}]);
+ if(!a.length||JSON.stringify(a)!==JSON.stringify(b))return '立直后暗杠会改变听牌形或待牌，禁止暗杠';
+}
 export function legal(g:Game,seat=0):Legal {
  const p=g.players[seat],own=g.phase==='self'&&g.turn===seat,response=g.phase==='response'&&g.lastDiscard?.seat!==seat;
  const count=g.lastDiscard?p.hand.filter(t=>kind(t)===kind(g.lastDiscard!.tile)).length:0;
- return {tsumo:own&&!!evaluate(g,seat,true),ron:response&&canRon(g,seat),pon:response&&!g.pending&&!p.riichi&&count>=2,kan:!p.riichi&&g.wall.length>0&&g.kans<4&&(own&&g.source!=='call'&&g.source!=='ability'&&(kanTiles(p).length===4||addedTile(p)!==undefined)||response&&!g.pending&&count===3),nuki:own&&g.source!=='call'&&g.source!=='ability'&&g.wall.length>0&&p.hand.some(t=>kind(t)===23&&(!p.riichi||t===g.drawn)),riichiTiles:own&&!p.riichi&&p.melds.every(m=>!m.open)&&p.points>=1000&&g.wall.length>=4&&g.source!=='call'?p.hand.filter(t=>shanten(p.hand.filter(x=>x!==t),p.melds)===0):[],ability:own&&g.source==='normal'&&!p.riichi&&!p.used&&!p.sealed&&p.active!=='A03'&&p.luck>=({A01:4,A02:6,A03:0,A06:10,A07:20,A10:8}[p.active])};
+ return {tsumo:own&&!!evaluate(g,seat,true),ron:response&&canRon(g,seat),pon:response&&!g.pending&&!p.riichi&&count>=2,kan:(!p.riichi||own&&!riichiKanReason(g,seat))&&g.wall.length>0&&g.kans<4&&(own&&g.source!=='call'&&g.source!=='ability'&&(kanTiles(p,g.drawn).length===4||!p.riichi&&addedTile(p)!==undefined)||response&&!g.pending&&count===3),nuki:own&&g.source!=='call'&&g.source!=='ability'&&g.wall.length>0&&p.hand.some(t=>kind(t)===23&&(!p.riichi||t===g.drawn)),riichiTiles:own&&!p.riichi&&p.melds.every(m=>!m.open)&&p.points>=1000&&g.wall.length>=4&&g.source!=='call'?p.hand.filter(t=>shanten(p.hand.filter(x=>x!==t),p.melds)===0):[],ability:own&&g.source==='normal'&&!p.riichi&&!p.used&&!p.sealed&&p.active!=='A03'&&p.luck>=({A01:4,A02:6,A03:0,A06:10,A07:20,A10:8}[p.active])};
 }
 function drift(g:Game,winners:number[],loser?:number){g.players.forEach((p,i)=>{const n=clamp(Math.round(50+.9*(p.luck-50)+(winners.includes(i)?-6:i===loser?8:0)));const delta=n-p.luck;const change=delta>0?Math.min(delta,15-p.gain):delta;p.luck+=change;if(change>0)p.gain+=change;say(g,p.name+' 结算运气 '+(change>=0?'+':'')+change+' → '+p.luck)})}
 function settleMatch(g:Game,repeat:boolean){
@@ -49,7 +56,7 @@ function draw(g:Game,s:number,replacement=false){if(!g.wall.length){exhausted(g)
  if(replacement){t=g.dead.splice(10,1)[0];g.dead.push(g.wall.pop()!)}else{t=drawWeighted(p.hand,g.wall,p.luck,g.rng,p.melds);if(p.sealed)p.sealDrawn=true;g.players.forEach((q,i)=>{if(i!==s&&q.sealed)q.sealed--})}
  p.hand.push(t);sorted(p.hand);g.drawn=t;g.source=replacement?'replacement':'normal';}
 function passRon(g:Game,s:number){if(canRon(g,s)){g.players[s].furiten=true;if(g.players[s].riichi)g.players[s].permanentFuriten=true}}
-function establish(g:Game){if(g.pendingRiichi!==undefined){const p=g.players[g.pendingRiichi];p.riichi=true;p.ippatsu=true;p.points-=1000;g.pot+=1000;say(g,p.name+' 立直');g.pendingRiichi=undefined}}
+function establish(g:Game){if(g.pendingRiichi!==undefined){const p=g.players[g.pendingRiichi];p.doubleRiichi=p.discards===1&&!g.interrupted;p.riichi=true;p.ippatsu=true;p.points-=1000;g.pot+=1000;say(g,p.name+(p.doubleRiichi?' 双立直':' 立直'));g.pendingRiichi=undefined}}
 function call(g:Game,s:number,kan:boolean){const last=g.lastDiscard!;const p=g.players[s];const tiles=p.hand.filter(t=>kind(t)===kind(last.tile)).slice(0,kan?3:2);p.hand=p.hand.filter(t=>!tiles.includes(t));tiles.push(last.tile);g.players[last.seat].river=g.players[last.seat].river.filter(t=>t!==last.tile);p.melds.push({tiles,open:true,kan});interrupt(g);g.turn=s;g.lastDiscard=undefined;g.drawn=undefined;g.phase='self';g.source='call';g.noDiscardKind=kind(last.tile);say(g,p.name+(kan?' 明杠':' 碰'));if(kan){g.kans++;draw(g,s,true)}}
 function resolve(g:Game,user:'pass'|'ron'|'pon'|'kan'){
  const from=g.lastDiscard!.seat,order=[(from+1)%3,(from+2)%3];const winners=order.filter(s=>s===0?user==='ron'&&canRon(g,s):canRon(g,s));
@@ -80,7 +87,8 @@ function perform(g:Game,a:Action,seat:number){const p=g.players[seat],l=legal(g,
  if(a.type==='ability'){ability(g,a);return}
  if(a.type==='tsumo'&&l.tsumo){finish(g,[seat],true);return}
  if(a.type==='nuki'&&l.nuki){const t=p.hand.find(t=>kind(t)===23&&(!p.riichi||t===g.drawn))!;g.lastDiscard={seat,tile:t};g.pending='nuki';g.phase='response';g.responseReady=false;return}
- if(a.type==='kan'&&l.kan){const t=addedTile(p);if(t!==undefined){g.lastDiscard={seat,tile:t};g.pending='kakan';g.phase='response';g.responseReady=false;interrupt(g);return}const tiles=kanTiles(p);p.hand=p.hand.filter(t=>!tiles.includes(t));p.melds.push({tiles,open:false,kan:true});g.kans++;interrupt(g);say(g,p.name+' 暗杠');draw(g,seat,true);return}
+ if(a.type==='kan'&&p.riichi&&!l.kan){say(g,riichiKanReason(g,seat)??'当前不能杠');return}
+ if(a.type==='kan'&&l.kan){const t=p.riichi?undefined:addedTile(p);if(t!==undefined){g.lastDiscard={seat,tile:t};g.pending='kakan';g.phase='response';g.responseReady=false;interrupt(g);return}const tiles=kanTiles(p,g.drawn);p.hand=p.hand.filter(t=>!tiles.includes(t));p.melds.push({tiles,open:false,kan:true});g.kans++;interrupt(g);say(g,p.name+' 暗杠');draw(g,seat,true);return}
  if(a.type==='discard'){if(!p.hand.includes(a.tile)||p.riichi&&a.tile!==g.drawn||g.noDiscardKind===kind(a.tile)||a.riichi&&!l.riichiTiles.includes(a.tile))return;
  if(p.riichi)p.ippatsu=false;if(a.riichi)g.pendingRiichi=seat;p.hand=p.hand.filter(t=>t!==a.tile);p.river.push(a.tile);p.history.push(a.tile);p.discards++;if(p.sealDrawn){p.sealed=0;p.sealDrawn=false;}else if(g.source==='normal'&&p.sealed)p.sealed=0;g.lastDiscard={tile:a.tile,seat};g.drawn=undefined;g.phase='response';g.responseReady=false;say(g,p.name+' 打出 '+tileName(a.tile));}
 }

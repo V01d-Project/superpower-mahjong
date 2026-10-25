@@ -1,0 +1,19 @@
+{
+  "fixture": true,
+  "postRiichiKan": 1,
+  "doubleRiichi": true,
+  "replacementKind": 24,
+  "result": {
+    "title": "你 自摸",
+    "details": [
+      "你：双立直、门前清自摸、岭上开花、自风、场风 6番 60符"
+    ],
+    "deltas": [
+      13000,
+      -6000,
+      -6000
+    ]
+  },
+  "conserved": true,
+  "errors": []
+}

@@ -27,7 +27,7 @@ function client(){
  const transport=new P2PTransport(s=>states.push(s),(text,ready)=>statuses.push({text,ready}),s=>errors.push(s));
  transports.push(transport);return {transport,states,statuses,errors,get state(){return states.at(-1)}};
 }
-beforeEach(()=>{vi.useFakeTimers();network.drop=false});
+beforeEach(()=>{const memory=new Map<string,string>();const storage={getItem:(k:string)=>memory.get(k)??null,setItem:(k:string,v:string)=>memory.set(k,v),removeItem:(k:string)=>memory.delete(k)};vi.stubGlobal('localStorage',storage);vi.stubGlobal('sessionStorage',storage);vi.useFakeTimers();network.drop=false});
 afterEach(()=>{for(const t of transports)t.disconnect();transports.length=0;network.peers.clear();vi.useRealTimers()});
 async function table(){
  const host=client();host.transport.connect('','create',{});await flush();
@@ -64,4 +64,26 @@ it('signaling reconnect preserves the existing authoritative deal and connection
  const {host,guest}=await table();const game=structuredClone(guest.state.game);
  for(const peer of network.peers.values())peer.emit('disconnected');await flush();
  expect(guest.state.game).toEqual(game);expect(host.state.game.players[0].hand).toHaveLength(14);
+});
+it('joiner reclaims the original seat with its issued token, and a modified token is rejected',async()=>{
+ const {host,guest}=await table();const before=structuredClone(guest.state);
+ guest.transport.disconnect(false);await flush();
+ const forged=client();forged.transport.connect('','rejoin',{roomId:before.roomId,playerToken:before.playerToken+'bad'});await flush();
+ expect(forged.errors).toContain('Invalid player token');expect(forged.states).toHaveLength(0);
+ guest.transport.connect('','rejoin',{roomId:before.roomId,playerToken:before.playerToken});await flush();
+ expect(guest.state.seat).toBe(before.seat);expect(guest.state.game).toEqual(before.game);expect(host.state.players[1].connected).toBe(true);
+});
+it('host refresh restores the same peer id and authority, then accepts the original joiner token',async()=>{
+ const {host,guest}=await table(),h=structuredClone(host.state),g=structuredClone(guest.state);
+ host.transport.disconnect(false);await flush();
+ host.transport.connect('','rejoin',{roomId:h.roomId,playerToken:h.playerToken,host:true});await flush();
+ expect(host.state.roomId).toBe(h.roomId);expect(host.state.game).toEqual(h.game);
+ guest.transport.connect('','rejoin',{roomId:g.roomId,playerToken:g.playerToken});await flush();
+ expect(guest.state.game).toEqual(g.game);expect(host.state.players[1].connected).toBe(true);
+});
+it('missing host snapshot produces an explicit invalid-room status',async()=>{
+ const {host}=await table(),h=structuredClone(host.state);host.transport.disconnect(false);await flush();
+ localStorage.removeItem('mj.p2p.host.'+h.roomId);
+ const restored=client();restored.transport.connect('','rejoin',{roomId:h.roomId,playerToken:h.playerToken,host:true});await flush();
+ expect(restored.states).toHaveLength(0);expect(restored.statuses.at(-1)).toEqual({text:'房间已失效，请重新建房',ready:false});
 });

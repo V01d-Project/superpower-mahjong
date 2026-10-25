@@ -3,7 +3,7 @@
  * RNG is deterministic local-play xoshiro128**, NOT the online ChaCha/HKDF protocol. */
 export type Tile = number;
 export type Meld = { tiles: Tile[]; open: boolean; kan?: boolean };
-export interface ScoreContext { melds?: Meld[]; winTile: Tile; tsumo: boolean; riichi?: boolean; ippatsu?: boolean; seatWind?: number; roundWind?: number; rinshan?: boolean; chankan?: boolean; lastTile?: boolean; nuki?: number; doraIndicators?: Tile[]; uraIndicators?: Tile[] }
+export interface ScoreContext { melds?: Meld[]; winTile: Tile; tsumo: boolean; riichi?: boolean; doubleRiichi?: boolean; ippatsu?: boolean; seatWind?: number; roundWind?: number; rinshan?: boolean; chankan?: boolean; lastTile?: boolean; nuki?: number; doraIndicators?: Tile[]; uraIndicators?: Tile[] }
 export interface ScoreResult { han: number; fu: number; yakuman: number; yaku: string[]; base: number }
 export const kind = (t: Tile): number => Math.floor(t / 4);
 export function tileName(t: Tile): string { const k=kind(t); return k<2 ? (k?'9万':'1万') : k<11 ? ((t===24?'赤':'')+(k-1)+'筒') : k<20 ? ((t===60?'赤':'')+(k-10)+'索') : ['东','南','西','北','白','发','中'][k-20]; }
@@ -11,6 +11,7 @@ export const makeDeck = (): Tile[] => Array.from({length:108},(_,i)=>i);
 export class RNG {
  private s: number[];
  constructor(seed:string) { let h=2166136261; for(const c of seed) h=Math.imul(h^c.charCodeAt(0),16777619); this.s=Array.from({length:4},()=>{h+=0x9e3779b9; let z=h; z=Math.imul(z^(z>>>16),0x21f0aaad); z=Math.imul(z^(z>>>15),0x735a2d97); return (z^(z>>>15))>>>0;}); }
+ static restore(raw:any):RNG {if(!Array.isArray(raw?.s)||raw.s.length!==4||raw.s.some((n:unknown)=>!Number.isInteger(n)))throw Error('Invalid RNG state');const r=new RNG('restore');r.s=[...raw.s];return r;}
  private uint():number { const s=this.s, rot=(x:number,n:number)=>(x<<n)|(x>>>(32-n)); const r=Math.imul(rot(Math.imul(s[1],5),7),9)>>>0,t=s[1]<<9; s[2]^=s[0];s[3]^=s[1];s[1]^=s[2];s[0]^=s[3];s[2]^=t;s[3]=rot(s[3],11);return r; }
  next():number{return this.uint()/4294967296;}
  int(n:number):number {if(!Number.isSafeInteger(n)||n<1||n>4294967296)throw Error('Invalid RNG bound');const limit=4294967296-4294967296%n;let x;do{x=this.uint();}while(x>=limit);return x%n;}
@@ -52,7 +53,7 @@ export function score(tiles:Tile[],ctx:ScoreContext):ScoreResult|null {
  const fixed:Group[]=[];for(const m of ms){const a=m.tiles.map(kind).sort((a,b)=>a-b);if(a.length!==(m.kan?4:3)||!a.every(k=>k===a[0]))return null;fixed.push({k:a[0],seq:false,open:m.open,kan:!!m.kan});}
  const candidates:ScoreResult[]=[];
  function finish(han:number,fu:number,yaku:string[],ym:string[]){if(ym.length){candidates.push({han:0,fu:0,yakuman:ym.length,yaku:ym,base:8000*ym.length});return;}if(!han)return;let bonus=0;for(const t of allTiles)if(t===24||t===60)bonus++;if(bonus){han+=bonus;yaku.push('赤宝牌 '+bonus);}let ds=0;for(const t of ctx.doraIndicators??[]){const k=dora(kind(t));ds+=ac[k]+(k===23?(ctx.nuki??0):0);}if(ds){han+=ds;yaku.push('宝牌 '+ds);}let us=0;if(closed&&ctx.riichi)for(const t of ctx.uraIndicators??[]){const k=dora(kind(t));us+=ac[k]+(k===23?(ctx.nuki??0):0);}if(us){han+=us;yaku.push('里宝牌 '+us);}if(ctx.nuki){han+=ctx.nuki;yaku.push('拔北 '+ctx.nuki);}const base=han>=13?8000:han>=11?6000:han>=8?4000:han>=6?3000:han>=5?2000:Math.min(2000,fu*2**(han+2));candidates.push({han,fu,yakuman:0,yaku,base});}
- function common(){const y:string[]=[],ym:string[]=[];let h=0;const add=(name:string,n:number)=>{y.push(name);h+=n;};if(closed&&ctx.riichi)add('立直',1);if(closed&&ctx.riichi&&ctx.ippatsu)add('一发',1);if(closed&&ctx.tsumo)add('门前清自摸',1);if(ctx.chankan&&!ctx.tsumo)add('抢杠',1);if(ctx.rinshan&&ctx.tsumo)add('岭上开花',1);if(ctx.lastTile&&!ctx.rinshan)add(ctx.tsumo?'海底摸月':'河底捞鱼',1);if(ks.every(k=>!outside(k)))add('断幺九',1);const suits=new Set(ks.filter(k=>k<20).map(k=>k<2?0:k<11?1:2));if(suits.size===1)add(ks.some(k=>k>=20)?'混一色':'清一色',ks.some(k=>k>=20)?(closed?3:2):(closed?6:5));if(ks.every(k=>k>=20))ym.push('字一色');if(ks.every(terminal))ym.push('清老头');if(ks.every(k=>[12,13,14,16,18,25].includes(k)))ym.push('绿一色');if(closed&&!ms.length&&suits.size===1&&!ks.some(k=>k>=20)){const start=ks[0]<11?2:11;if(c[start]>=3&&c[start+8]>=3&&Array.from({length:7},(_,i)=>c[start+i+1]).every(n=>n>=1))ym.push('九莲宝灯');}return {y,ym,h};}
+ function common(){const y:string[]=[],ym:string[]=[];let h=0;const add=(name:string,n:number)=>{y.push(name);h+=n;};if(closed&&ctx.doubleRiichi)add('双立直',2);else if(closed&&ctx.riichi)add('立直',1);if(closed&&ctx.riichi&&ctx.ippatsu)add('一发',1);if(closed&&ctx.tsumo)add('门前清自摸',1);if(ctx.chankan&&!ctx.tsumo)add('抢杠',1);if(ctx.rinshan&&ctx.tsumo)add('岭上开花',1);if(ctx.lastTile&&!ctx.rinshan)add(ctx.tsumo?'海底摸月':'河底捞鱼',1);if(ks.every(k=>!outside(k)))add('断幺九',1);const suits=new Set(ks.filter(k=>k<20).map(k=>k<2?0:k<11?1:2));if(suits.size===1)add(ks.some(k=>k>=20)?'混一色':'清一色',ks.some(k=>k>=20)?(closed?3:2):(closed?6:5));if(ks.every(k=>k>=20))ym.push('字一色');if(ks.every(terminal))ym.push('清老头');if(ks.every(k=>[12,13,14,16,18,25].includes(k)))ym.push('绿一色');if(closed&&!ms.length&&suits.size===1&&!ks.some(k=>k>=20)){const start=ks[0]<11?2:11;if(c[start]>=3&&c[start+8]>=3&&Array.from({length:7},(_,i)=>c[start+i+1]).every(n=>n>=1))ym.push('九莲宝灯');}return {y,ym,h};}
  if(!ms.length&&orphans.every(k=>c[k])&&ks.every(k=>orphans.includes(k))){finish(0,0,[],['国士无双']);}
  if(!ms.length&&c.filter(n=>n===2).length===7){const a=common();a.y.push('七对子');a.h+=2;if(ks.every(outside)){a.y.push('混老头');a.h+=2;}finish(a.h,25,a.y,a.ym);}
  for(const d of decompositions(c,4-ms.length)){
@@ -90,3 +91,18 @@ export function deal(seed:string,lucks:number[]):{hands:Tile[][];wall:Tile[];dea
  while(budgets.some(n=>n>0)){const order=[0,1,2].filter(p=>budgets[p]>0);shuffle(order,exchange);for(const p of order){budgets[p]--;const hand=hands[p],c=counts(hand),key=c.join(''),positive=lucks[p]>50;if(cached[p]?.key!==key)cached[p]={key,choices:removal(c,positive)};const choices=cached[p]!.choices;const eligible=hand.map((t,i)=>choices.includes(kind(t))?i:-1).filter(i=>i>=0),i=eligible[exchange.int(eligible.length)],j=exchange.int(deck.length),before=quality(c);c[kind(hand[i])]--;c[kind(deck[j])]++;const rate=positive?(before[0]<=-3?exchangeAcceptance.far:before[0]===-2?exchangeAcceptance.two:exchangeAcceptance.near):exchangeAcceptance.negative;if(compare(quality(c),before)*(positive?1:-1)>0&&acceptance.next()<rate)[hand[i],deck[j]]=[deck[j],hand[i]];}}
  return {hands,wall:deck,dead,rng};}
 export function drawWeighted(hand:Tile[],wall:Tile[],luck:number,rng:RNG,melds:Meld[]=[]):Tile {if(!wall.length)throw Error('Empty live wall');if(luck===50)return wall.shift()!;const c=counts(hand),s=sCounts(c,melds.length),a=.4*(Math.max(0,Math.min(100,luck))-50)/50,weights=new Map<number,number>();for(const t of wall){const k=kind(t);if(weights.has(k))continue;c[k]++;const next=sCounts(c,melds.length);c[k]--;const g=Math.max(-1,Math.min(1,s-next));weights.set(k,1000+Math.round(1000*a*g));}let r=rng.int(wall.reduce((sum,t)=>sum+weights.get(kind(t))!,0)),index=0;for(;index<wall.length;index++){r-=weights.get(kind(wall[index]))!;if(r<0)break;}[wall[0],wall[index]]=[wall[index],wall[0]];return wall.shift()!;}
+
+export function waitShapes(tiles:Tile[],melds:Meld[]=[]):string[] {
+ const c=counts(tiles),out:string[]=[];
+ for(const w of waits(tiles,melds)){c[w]++;
+ for(const d of decompositions(c,4-melds.length)){
+ const gs=[...d.groups,...melds.map(m=>({k:kind(m.tiles[0]),seq:false,open:m.open,kan:!!m.kan}))];
+ const base=d.pair+':'+gs.map(g=>(g.seq?'s':'t')+g.k).sort().join(',');
+ if(d.pair===w)out.push(w+':'+base+':pair');
+ for(const g of d.groups)if(g.seq?w>=g.k&&w<=g.k+2:w===g.k)out.push(w+':'+base+':'+(g.seq?'s':'t')+g.k);
+ }
+ if(!melds.length&&c.filter(n=>n===2).length===7)out.push(w+':pairs');
+ if(!melds.length&&orphans.every(k=>c[k])&&c.every((n,k)=>!n||orphans.includes(k)))out.push(w+':orphans');
+ c[w]--;}
+ return [...new Set(out)].sort();
+}

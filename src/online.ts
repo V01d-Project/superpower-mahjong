@@ -1,8 +1,9 @@
 import type {Action,Game,Legal} from './engine';
 declare global { interface Window { MJ_SERVER?:string } }
 export interface RoomState {roomId:string;playerToken:string;seat:number;revision:number;players:{connected:boolean}[];game:Game|null;legal:Legal|null}
-interface Credential {server:string;roomId:string;playerToken:string}
+export interface Credential {server:string;roomId:string;playerToken:string;host?:boolean}
 const key='mj.room';
+export function savedP2P():Credential|null {try{return JSON.parse(localStorage.getItem(sessionStorage.getItem('mj.p2p.key')||'mj.p2p')||'null')}catch{return null}}
 export function savedRoom():Credential|null {try {const c=JSON.parse(sessionStorage.getItem(key)||'null');return c&&typeof c.server==='string'&&typeof c.roomId==='string'&&typeof c.playerToken==='string'?c:null}catch{return null}}
 export function serverAddress(){try{return window.MJ_SERVER||localStorage.getItem('MJ_SERVER')||''}catch{return window.MJ_SERVER||''}}
 export class OnlineTransport {

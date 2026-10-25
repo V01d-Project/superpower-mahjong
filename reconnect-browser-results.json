@@ -1,0 +1,46 @@
+{
+  "consoleErrors": [],
+  "pageErrors": [],
+  "roomId": "sanma-412d15a5-9ac6-43b0-bd7b-0eedf8749316",
+  "deal": {
+    "handCounts": [
+      14,
+      13,
+      13
+    ],
+    "indicators": [
+      "4索"
+    ],
+    "sameRoom": true,
+    "privateHands": true
+  },
+  "sharedDiscard": "1万",
+  "joinerRefresh": {
+    "sameHand": true,
+    "sameRivers": true
+  },
+  "hostRefresh": {
+    "sameRoom": true,
+    "sameHand": true,
+    "sameRivers": true,
+    "joinersReconnected": true
+  },
+  "p2pResults": [
+    "荒牌流局",
+    "荒牌流局",
+    "荒牌流局"
+  ],
+  "hostLeftVisible": true,
+  "abruptHostLeftVisible": true,
+  "localRound": {
+    "steps": 241,
+    "result": "荒牌流局"
+  },
+  "localSecondRound": {
+    "before": "种子 starlight-2026\n东一局 · 庄家 你 · 剩余 3 局（连庄另计） · 余 0 张\n新比赛",
+    "after": "种子 starlight-2026:2\n东二局 · 庄家 青岚 · 剩余 2 局（连庄另计） · 余 54 张\n新比赛",
+    "repeat": false,
+    "result": "荒牌流局"
+  },
+  "ok": true
+}
