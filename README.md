@@ -65,11 +65,14 @@ P2P 浏览器验收：`npm.cmd run build` 后运行 `node scripts/p2p-browser-te
 
 **已发布：** https://v01d-project.github.io/superpower-mahjong/
 
-本次构建：2026-10-25 06:50 Europe/Paris（UTC+01:00）。发布提交 `53007d4`，仅推送 gh-pages，保留 `.nojekyll`，资源前缀 `/superpower-mahjong/`。npm.cmd test：9 个文件、90 项通过；npm.cmd run build：通过。
+本次构建：2026-10-25 08:05 Europe/Paris（UTC+01:00），含东四局赛制、连庄、加杠与抢杠。发布提交 `5daa525`（gh-pages），保留 `.nojekyll`，资源前缀 `/superpower-mahjong/`。npm.cmd test：10 个文件、106 项通过；npm.cmd run build：通过。
 
-2026-10-25 05:51:34 UTC 验收：Pages built，HTML 200，标题「超能力三麻 · 单机与联机牌桌」；JS/CSS 均为 200、类型正确且与本地产物一致。headless Chrome 完成单机开局和一次弃牌，页面及控制台错误为 0。证据：pages-live-results.json、pages-live.png；命令见 DEPLOYMENT.md。
+2026-10-25 07:0x UTC 线上验收（生产构建 `index-DKKxDpdu.js`）：
+- HTML 200，标题「超能力三麻 · 单机与联机牌桌」；JS/CSS 均 200 且类型正确。
+- 公网 P2P 三人联机：三个独立浏览器上下文经公共信令进同一房，手牌 14/13/13、暗牌不串、三家看到的牌一致，房主退出与强杀两种情况加入者都看到「房主已离开」，控制台 0 报错。证据 p2p-live-results.json。
+- 局况显示：线上开局后能看到「东几局」与庄家标记，控制台 0 报错（scripts/live-round-check.cjs）。
 
-剩余：本次未验收线上多人 P2P、自建 WebSocket、完整一局、移动端及全部规则边界。已有未实现设计见上文。文档仅在本地更新，未提交或推送 main。
+剩余：自建 WebSocket 仅本地验过；移动端只验过 390px 视口，未做真机；规则的边界情形与多人高运竞争仍非全量验收。源码已提交并推送 main（`98bdcac`、`b8de77b`）。
 
 ## 本次补齐：固定东四局与加杠
 

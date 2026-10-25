@@ -2,7 +2,7 @@
   "url": "https://v01d-project.github.io/superpower-mahjong/",
   "consoleErrors": [],
   "pageErrors": [],
-  "roomId": "sanma-d3599d10-5191-43e8-a40e-1ff53ad2bc3c",
+  "roomId": "sanma-bf6baf24-b1fa-49b9-abe0-c8a9c00dfff7",
   "deal": {
     "handCounts": [
       14,
@@ -10,12 +10,12 @@
       13
     ],
     "indicators": [
-      "2筒"
+      "1万"
     ],
     "sameRoom": true,
     "privateHands": true
   },
-  "sharedDiscard": "2筒",
+  "sharedDiscard": "1万",
   "hostLeftVisible": true,
   "ok": true
 }
