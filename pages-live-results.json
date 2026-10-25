@@ -1,0 +1,27 @@
+{
+  "verifiedAt": "2026-10-25T05:51:34.138Z",
+  "http": 200,
+  "title": "超能力三麻 · 单机与联机牌桌",
+  "htmlSnippet": "<!doctype html><html lang=\"zh-CN\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0,viewport-fit=cover\"><meta name=\"theme-color\" content=\"#103f38\"><link rel=\"icon\" href=\"data:,\"><title>超能力三麻 · 单机与联机牌桌</title>  <script type=\"module\" crossorigin src=\"/superpower-mahjong/assets/index-DwucFNky.js\"></script>\n  <link rel=\"stylesheet\" crossorigin href=\"/superpower-mahjong/assets/index-CMt6aEQK.css\">\n</head><body><div id=\"root\"></div></body></html>\n",
+  "assets": [
+    {
+      "url": "https://v01d-project.github.io/superpower-mahjong/assets/index-DwucFNky.js",
+      "status": 200,
+      "type": "application/javascript; charset=utf-8",
+      "matchesBuild": true,
+      "snippet": "var jg=Object.defineProperty;var Ug=r=>{throw TypeError(r)};var Bg=(r,i,s)=>i in r?jg(r,i,{enumerable:!0,configurable:!0,writable:!0,value:s}):r[i]=s;var Me=(r,i,s)=>Bg(r,typeof i!"
+    },
+    {
+      "url": "https://v01d-project.github.io/superpower-mahjong/assets/index-CMt6aEQK.css",
+      "status": 200,
+      "type": "text/css; charset=utf-8",
+      "matchesBuild": true,
+      "snippet": ":root{font-family:Noto Sans SC,system-ui,sans-serif;color:#e9eee6;background:#101c20;font-synthesis:none;color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:radial-g"
+    }
+  ],
+  "handTiles": 13,
+  "riverText": "北",
+  "errors": [],
+  "screenshot": "C:\\Users\\Sylphie\\.openclaw\\workspace\\work\\mahjong\\game/pages-live.png",
+  "scope": "single-player start and discard; multiplayer not verified"
+}

@@ -62,7 +62,7 @@ function ability(g:Game,a:Extract<Action,{type:'ability'}>){const p=g.players[g.
  const cost={A01:4,A02:6,A03:0,A06:10,A07:20,A10:8}[id];p.luck-=cost;p.used=true;say(g,p.name+' 发动 '+id+' · 支付 '+cost+' 运 → '+p.luck);
  if(hostile&&q!.shield&&q!.luck>=4){q!.shield=false;q!.luck-=4;say(g,q!.name+' 护运抵挡 · 支付 4 运 → '+q!.luck);return}
  if(id==='A01'){const n=Math.min(10,q!.luck,100-p.luck,15-p.gain);q!.luck-=n;p.luck+=n;p.gain+=n;say(g,p.name+' 抢得 '+n+' 运 → '+p.luck+'；'+q!.name+' → '+q!.luck);interrupt(g)}
- if(id==='A02'&&g.turn===0)g.peek=g.wall.slice(0,3);
+ if(id==='A02')g.peek=g.wall.slice(0,3);
  if(id==='A06')q!.sealed=3;if(id==='A10'){q!.luck=Math.max(50,q!.luck-10);say(g,q!.name+' 被均衡 → '+q!.luck);interrupt(g)}
  if(id==='A07'){const positions=g.wall.map((t,i)=>({t,i})).filter(({t})=>a.suit==='p'?kind(t)>=2&&kind(t)<=10:kind(t)>=11&&kind(t)<=19);if(!positions.length){p.luck+=cost;say(g,'未找到可换牌');return}const {t,i}=positions[g.abilityRng.int(positions.length)];g.wall[i]=a.tile!;p.hand[p.hand.indexOf(a.tile!)]=t;sorted(p.hand);g.source='ability';g.drawn=undefined;interrupt(g)}
 }
@@ -88,4 +88,24 @@ export function aiStep(g:Game):Game {
  let choices=p.riichi?p.hand.filter(t=>t===g.drawn):p.hand.filter(t=>kind(t)!==g.noDiscardKind);
  const threats=g.players.filter((q,i)=>i!==s&&q.riichi);const value=(t:Tile)=>{const h=p.hand.filter(x=>x!==t);const risk=threats.reduce((v,q)=>v+(q.history.some(x=>kind(x)===kind(t))?0:kind(t)>=20?1:2),0);return shanten(h,p.melds)*10+risk*4};choices=choices.sort((a,b)=>value(a)-value(b)||a-b);const tile=choices[0];if(tile!==undefined)perform(g,{type:'discard',tile,riichi:l.riichiTiles.includes(tile)},s);
  }return {...g};
+}
+
+/** Multiplayer entry points reuse the same rule primitives; no AI response decisions. */
+export function actSeat(g:Game,a:Action,seat:number):Game {
+ if(!Number.isInteger(seat)||seat<0||seat>2)throw Error('Invalid seat');
+ if(g.phase==='response')throw Error('Responses must be collected and resolved together');
+ perform(g,a,seat);return {...g};
+}
+export type ResponseChoice='pass'|'ron'|'pon'|'kan';
+export function resolveResponses(g:Game,choices:Partial<Record<number,ResponseChoice>>):Game {
+ if(g.phase!=='response'||!g.lastDiscard)throw Error('No response window');
+ const from=g.lastDiscard.seat,order=[(from+1)%3,(from+2)%3];
+ for(const s of order){const a=choices[s]??'pass',l=legal(g,s);if(a!=='pass'&&!l[a])throw Error('Illegal response');}
+ const winners=order.filter(s=>choices[s]==='ron'&&canRon(g,s));
+ for(const s of order)if(choices[s]!=='ron')passRon(g,s);
+ if(winners.length){finish(g,winners);return {...g}}
+ establish(g);
+ if(g.pending==='nuki'){const p=g.players[from],t=g.lastDiscard.tile;p.hand=p.hand.filter(x=>x!==t);p.nuki.push(t);interrupt(g);say(g,p.name+' 拔北');draw(g,from,true);return {...g}}
+ for(const s of order)if(choices[s]==='pon'||choices[s]==='kan'){call(g,s,choices[s]==='kan');return {...g}}
+ draw(g,(from+1)%3);return {...g};
 }

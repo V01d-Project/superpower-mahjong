@@ -1,0 +1,22 @@
+{
+  "roomCreated": true,
+  "viewports": [
+    {
+      "width": 390,
+      "height": 844,
+      "overflow": false
+    },
+    {
+      "width": 360,
+      "height": 740,
+      "overflow": false
+    }
+  ],
+  "round": "荒牌流局",
+  "steps": 61,
+  "reloadRejoin": true,
+  "next": true,
+  "localDiscard": true,
+  "pageErrors": [],
+  "ok": true
+}

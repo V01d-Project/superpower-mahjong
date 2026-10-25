@@ -1,0 +1,25 @@
+{
+  "consoleErrors": [],
+  "pageErrors": [],
+  "roomId": "sanma-5a44262c-ba0f-4934-b490-b0e745af9e96",
+  "deal": {
+    "handCounts": [
+      14,
+      13,
+      13
+    ],
+    "indicators": [
+      "1筒"
+    ],
+    "sameRoom": true,
+    "privateHands": true
+  },
+  "sharedDiscard": "1万",
+  "hostLeftVisible": true,
+  "abruptHostLeftVisible": true,
+  "localRound": {
+    "steps": 242,
+    "result": "荒牌流局"
+  },
+  "ok": true
+}

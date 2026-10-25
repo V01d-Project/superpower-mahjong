@@ -6,11 +6,17 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "tsc -b && vite build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "server": "tsx server/index.ts"
   },
   "dependencies": {
+    "@types/node": "^26.6.5",
+    "@types/ws": "^8.18.2",
+    "peerjs": "^1.5.5",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "tsx": "^4.23.15",
+    "ws": "^8.22.0"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",
